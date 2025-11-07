@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>로봇팔 웹 제어 시스템</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      body {
+        font-family: "Inter", sans-serif;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        height: 100vh;
+        background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+      }
+
+      #app {
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      progress {
+        -webkit-appearance: none;
+        appearance: none;
+        height: 12px;
+        border-radius: 9999px;
+        overflow: hidden;
+        background-color: #1e293b;
+      }
+      progress::-webkit-progress-bar {
+        background-color: #1e293b;
+      }
+      #barBase::-webkit-progress-value {
+        background: linear-gradient(90deg, #0ea5e9, #38bdf8);
+      }
+      #barBase::-moz-progress-bar {
+        background: linear-gradient(90deg, #0ea5e9, #38bdf8);
+      }
+      #barShoulder::-webkit-progress-value {
+        background: linear-gradient(90deg, #7c3aed, #a78bfa);
+      }
+      #barShoulder::-moz-progress-bar {
+        background: linear-gradient(90deg, #7c3aed, #a78bfa);
+      }
+      #barElbow::-webkit-progress-value {
+        background: linear-gradient(90deg, #e11d48, #fb7185);
+      }
+      #barElbow::-moz-progress-bar {
+        background: linear-gradient(90deg, #e11d48, #fb7185);
+      }
+
+      .glow-effect {
+        box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+      }
+
+      .angle-card {
+        background: linear-gradient(145deg, #1e293b, #0f172a);
+        border: 1px solid rgba(59, 130, 246, 0.2);
+        transition: all 0.3s ease;
+      }
+
+      .angle-card:hover {
+        border-color: rgba(59, 130, 246, 0.4);
+        transform: translateY(-2px);
+      }
+
+      :focus {
+        outline: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app" class="text-white">
+      <!-- Header -->
+      <header
+        class="bg-gradient-to-r from-blue-900/40 to-purple-900/40 backdrop-blur-sm border-b border-blue-500/20 px-6 py-4"
+      >
+        <div class="flex items-center justify-between">
+          <h1 class="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
+            TECHNOLOGIA
+          </h1>
+          <div id="lblStatus" class="flex items-center gap-2 text-sm font-semibold">
+            <span class="w-2 h-2 rounded-full bg-gray-500 animate-pulse"></span>
+            <span class="text-gray-400">연결 안 됨</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Main Content -->
+      <main class="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-4 p-4 overflow-hidden">
+        <!-- Left Panel: Connection & Controls -->
+        <div class="space-y-4 flex flex-col">
+          <!-- Connection Card -->
+          <div class="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-5 border border-slate-700/50 glow-effect">
+            <h2 class="text-lg font-bold text-cyan-400 mb-4 flex items-center gap-2">
+              <span class="text-xl">🌐</span> 연결 설정
+            </h2>
+            <input
+              type="text"
+              id="serverUrl"
+              value="ws://192.168.60.73:8080"
+              class="w-full p-3 rounded-lg bg-slate-900/80 border border-slate-600 text-white mb-3 focus:border-cyan-500 transition"
+              placeholder="ws://IP:Port"
+            />
+            <div class="flex gap-3">
+              <button
+                id="btnConnect"
+                class="flex-1 py-3 rounded-lg bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 font-bold transition shadow-lg"
+              >
+                연결
+              </button>
+              <button
+                id="btnDisconnect"
+                disabled
+                class="flex-1 py-3 rounded-lg bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-500 hover:to-pink-500 font-bold transition shadow-lg disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                해제
+              </button>
+            </div>
+          </div>
+
+          <!-- Angle Summary -->
+          <div class="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-5 border border-slate-700/50">
+            <h2 class="text-lg font-bold text-purple-400 mb-4 flex items-center gap-2">
+              <span class="text-xl">📊</span> 현재 상태
+            </h2>
+            <div class="space-y-3">
+              <div class="flex justify-between items-center bg-slate-900/60 p-3 rounded-lg">
+                <span class="text-cyan-300 font-medium">베이스</span>
+                <span id="lblBaseSummary" class="text-cyan-400 text-xl font-bold">90.0°</span>
+              </div>
+              <div class="flex justify-between items-center bg-slate-900/60 p-3 rounded-lg">
+                <span class="text-purple-300 font-medium">어깨</span>
+                <span id="lblShoulderSummary" class="text-purple-400 text-xl font-bold">90.0°</span>
+              </div>
+              <div class="flex justify-between items-center bg-slate-900/60 p-3 rounded-lg">
+                <span class="text-rose-300 font-medium">팔꿈치</span>
+                <span id="lblElbowSummary" class="text-rose-400 text-xl font-bold">90.0°</span>
+              </div>
+              <div class="flex justify-between items-center bg-slate-900/60 p-3 rounded-lg">
+                <span class="text-yellow-300 font-medium">집게</span>
+                <span id="lblGripperSummary" class="text-green-400 text-xl font-bold">열림 🖐</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Reset Button -->
+          <button id="btnReset" class="py-4 rounded-lg bg-slate-700 hover:bg-slate-600 font-bold transition shadow-lg">
+            🔄 초기 위치 리셋
+          </button>
+        </div>
+
+        <!-- Center & Right: Camera Feed -->
+        <div class="lg:col-span-2 flex flex-col">
+          <!-- Camera Display -->
+          <div class="flex-1 bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50 flex flex-col">
+            <h2 class="text-xl font-bold text-cyan-400 mb-4 flex items-center gap-2">
+              <span class="text-2xl">📹</span> 실시간 카메라
+            </h2>
+            <div
+              class="flex-1 bg-slate-900 rounded-xl overflow-hidden flex items-center justify-center border-2 border-slate-700"
+            >
+              <img
+                id="cameraFeed"
+                src=""
+                alt="Camera Feed"
+                class="w-full h-full object-contain"
+                style="display: none"
+              />
+              <div id="cameraPlaceholder" class="text-center text-gray-500">
+                <div class="text-6xl mb-4">📷</div>
+                <p class="text-lg">카메라 연결 대기 중...</p>
+                <p class="text-sm mt-2">서버에 연결하면 카메라 화면이 표시됩니다</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script>
+      let baseAngle = 90.0;
+      let shoulderAngle = 90.0;
+      let elbowAngle = 90.0;
+      let gripperClosed = false;
+
+      let leftPressed = false;
+      let rightPressed = false;
+      let upPressed = false;
+      let downPressed = false;
+      let shiftPressed = false;
+
+      let ws = null;
+
+      const serverUrlInput = document.getElementById("serverUrl");
+      const btnConnect = document.getElementById("btnConnect");
+      const btnDisconnect = document.getElementById("btnDisconnect");
+      const btnReset = document.getElementById("btnReset");
+      const lblBaseSummary = document.getElementById("lblBaseSummary");
+      const lblShoulderSummary = document.getElementById("lblShoulderSummary");
+      const lblElbowSummary = document.getElementById("lblElbowSummary");
+      const lblGripperSummary = document.getElementById("lblGripperSummary");
+      const lblStatus = document.getElementById("lblStatus");
+      const cameraFeed = document.getElementById("cameraFeed");
+      const cameraPlaceholder = document.getElementById("cameraPlaceholder");
+
+      function updateDisplay() {
+        lblBaseSummary.textContent = `${baseAngle.toFixed(1)}°`;
+        lblShoulderSummary.textContent = `${shoulderAngle.toFixed(1)}°`;
+        lblElbowSummary.textContent = `${elbowAngle.toFixed(1)}°`;
+
+        if (gripperClosed) {
+          lblGripperSummary.textContent = "닫힘 🤏";
+          lblGripperSummary.className = "text-red-400 text-xl font-bold";
+        } else {
+          lblGripperSummary.textContent = "열림 🖐";
+          lblGripperSummary.className = "text-green-400 text-xl font-bold";
+        }
+      }
+
+      function updateAngles() {
+        let changed = false;
+        const increment = 1.0;
+
+        // 베이스 (좌우)
+        if (leftPressed && baseAngle > 0) {
+          baseAngle = Math.max(0, baseAngle - increment);
+          changed = true;
+        }
+        if (rightPressed && baseAngle < 180) {
+          baseAngle = Math.min(180, baseAngle + increment);
+          changed = true;
+        }
+
+        // Shift + 방향키: 팔꿈치만 움직임
+        if (shiftPressed) {
+          if (upPressed) {
+            elbowAngle = Math.min(180, elbowAngle + increment);
+            changed = true;
+          }
+          if (downPressed) {
+            elbowAngle = Math.max(0, elbowAngle - increment);
+            changed = true;
+          }
+        }
+        // 방향키만: 어깨만 움직임
+        else {
+          if (upPressed) {
+            shoulderAngle = Math.min(180, shoulderAngle + increment);
+            changed = true;
+          }
+          if (downPressed) {
+            shoulderAngle = Math.max(0, shoulderAngle - increment);
+            changed = true;
+          }
+        }
+
+        if (changed) updateDisplay();
+      }
+
+      function sendData() {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          try {
+            const msg = `B${String(Math.round(baseAngle)).padStart(3, "0")}S${String(
+              Math.round(shoulderAngle)
+            ).padStart(3, "0")}E${String(Math.round(elbowAngle)).padStart(3, "0")}G${gripperClosed ? 1 : 0}\n`;
+            ws.send(msg);
+          } catch (e) {
+            console.error("WebSocket Send Error:", e);
+          }
+        }
+      }
+
+      function connectWebSocket() {
+        const url = serverUrlInput.value.trim();
+        if (!url.startsWith("ws://")) {
+          lblStatus.innerHTML =
+            '<span class="w-2 h-2 rounded-full bg-red-500"></span><span class="text-red-400">연결 실패</span>';
+          return;
+        }
+
+        if (ws) {
+          ws.close(1000, "New connection attempt");
+          ws = null;
+        }
+
+        lblStatus.innerHTML =
+          '<span class="w-2 h-2 rounded-full bg-yellow-500 animate-pulse"></span><span class="text-yellow-400">연결 중...</span>';
+        btnConnect.disabled = true;
+        btnDisconnect.disabled = true;
+
+        try {
+          ws = new WebSocket(url);
+
+          ws.onopen = () => {
+            lblStatus.innerHTML =
+              '<span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span><span class="text-green-400">연결됨</span>';
+            btnConnect.disabled = true;
+            btnDisconnect.disabled = false;
+
+            // 카메라 피드 표시 (예: MJPEG 스트림)
+            // 서버의 카메라 URL을 여기에 설정하세요
+            const cameraUrl = url.replace("ws://", "http://").replace(":8080", ":8080/camera");
+            cameraFeed.src = cameraUrl;
+            cameraFeed.style.display = "block";
+            cameraPlaceholder.style.display = "none";
+          };
+
+          ws.onerror = () => {
+            lblStatus.innerHTML =
+              '<span class="w-2 h-2 rounded-full bg-red-500"></span><span class="text-red-400">연결 오류</span>';
+          };
+
+          ws.onclose = (event) => {
+            lblStatus.innerHTML =
+              '<span class="w-2 h-2 rounded-full bg-gray-500"></span><span class="text-gray-400">연결 끊김</span>';
+            btnConnect.disabled = false;
+            btnDisconnect.disabled = true;
+          };
+
+          ws.onmessage = (event) => {
+            // Handle incoming messages
+          };
+        } catch (e) {
+          lblStatus.innerHTML =
+            '<span class="w-2 h-2 rounded-full bg-red-500"></span><span class="text-red-400">연결 실패</span>';
+          btnConnect.disabled = false;
+        }
+      }
+
+      function disconnectWebSocket() {
+        if (ws) {
+          ws.close();
+          ws = null;
+          lblStatus.innerHTML =
+            '<span class="w-2 h-2 rounded-full bg-gray-500"></span><span class="text-gray-400">연결 끊김</span>';
+          btnConnect.disabled = false;
+          btnDisconnect.disabled = true;
+
+          // 카메라 피드 숨기기
+          cameraFeed.src = "";
+          cameraFeed.style.display = "none";
+          cameraPlaceholder.style.display = "block";
+        }
+      }
+
+      document.addEventListener("DOMContentLoaded", () => {
+        updateDisplay();
+
+        btnConnect.addEventListener("click", connectWebSocket);
+        btnDisconnect.addEventListener("click", disconnectWebSocket);
+        btnReset.addEventListener("click", () => {
+          baseAngle = shoulderAngle = elbowAngle = 90.0;
+          gripperClosed = false;
+          updateDisplay();
+        });
+
+        document.addEventListener("keydown", (e) => {
+          if (e.target === serverUrlInput) return;
+
+          switch (e.key) {
+            case "ArrowLeft":
+              leftPressed = true;
+              e.preventDefault();
+              break;
+            case "ArrowRight":
+              rightPressed = true;
+              e.preventDefault();
+              break;
+            case "ArrowUp":
+              upPressed = true;
+              e.preventDefault();
+              break;
+            case "ArrowDown":
+              downPressed = true;
+              e.preventDefault();
+              break;
+            case "Shift":
+              shiftPressed = true;
+              e.preventDefault();
+              break;
+            case "Enter":
+              if (!e.repeat) {
+                gripperClosed = !gripperClosed;
+                updateDisplay();
+                sendData();
+              }
+              e.preventDefault();
+              break;
+          }
+        });
+
+        document.addEventListener("keyup", (e) => {
+          switch (e.key) {
+            case "ArrowLeft":
+              leftPressed = false;
+              break;
+            case "ArrowRight":
+              rightPressed = false;
+              break;
+            case "ArrowUp":
+              upPressed = false;
+              break;
+            case "ArrowDown":
+              downPressed = false;
+              break;
+            case "Shift":
+              shiftPressed = false;
+              break;
+          }
+        });
+
+        setInterval(updateAngles, 20);
+        setInterval(sendData, 100);
+      });
+    </script>
+  </body>
+</html>
